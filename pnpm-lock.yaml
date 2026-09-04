@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@snowluma/sdk':
-        specifier: 1.14.14
-        version: 1.14.14
+        specifier: 1.14.15
+        version: 1.14.15
       ws:
         specifier: ^8.21.3
         version: 8.21.3
@@ -186,8 +186,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@snowluma/sdk@1.14.14':
-    resolution: {integrity: sha512-Ana/vPqvVBPlAl1yczi83VRG6qmJNucDqiQf7t5dwsRQPlfeWCs5+aU8VCEbD6Sjl1sZNV6a+WrBpl29zgsPtA==}
+  '@snowluma/sdk@1.14.15':
+    resolution: {integrity: sha512-wiYjdGqRv7NOylGGmdJBYzVjK45tyxtSz0zyOjDXUfpT8ArAPC/+6tM/H4nMttWsjPmv17wsSzORqGlVu6yGhg==}
     engines: {node: '>=22'}
 
   '@types/node@22.20.1':
@@ -421,7 +421,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@snowluma/sdk@1.14.14': {}
+  '@snowluma/sdk@1.14.15': {}
 
   '@types/node@22.20.1':
     dependencies:
