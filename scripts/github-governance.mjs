@@ -12,7 +12,7 @@ import {
 const [mode, ...rawArguments] = process.argv.slice(2);
 if (!['verify', 'apply'].includes(mode)) usage();
 const options = parseArguments(rawArguments);
-const repository = options.repo ?? process.env.GITHUB_REPOSITORY ?? 'ShiYuPIay/napcat-plugin-qq-guardian';
+const repository = options.repo ?? process.env.GITHUB_REPOSITORY ?? 'ShiYuPIay/qq-guardian';
 const branch = options.branch ?? 'main';
 const singleMaintainer = options['single-maintainer'] === true;
 const policyLabel = singleMaintainer ? 'single-maintainer' : 'multi-maintainer';
