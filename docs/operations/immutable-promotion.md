@@ -59,10 +59,10 @@ or credential is stored in this repository.
 ```sh
 GH_TOKEN=*** \
 PRODUCTION_REVIEWER_IDS='[{"type":"User","id":123456}]' \
-pnpm environments:apply -- --repo=ShiYuPIay/napcat-plugin-qq-guardian
+pnpm environments:apply -- --repo=ShiYuPIay/qq-guardian
 
 GH_TOKEN=*** \
-pnpm environments:verify -- --repo=ShiYuPIay/napcat-plugin-qq-guardian
+pnpm environments:verify -- --repo=ShiYuPIay/qq-guardian
 ```
 
 Both environments require protected branches. Production additionally requires
