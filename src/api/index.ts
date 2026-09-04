@@ -204,7 +204,7 @@ function redactSecrets(raw: PluginConfig) {
   return {
     ...raw,
     webui: { ...raw.webui, jwtSecret: REDACTED },
-    ai:    { ...raw.ai, apiKey: raw.ai.apiKey ? REDACTED : '' },
+    ai:    { ...raw.ai, apiKey: raw.ai.apiKey ? REDACTED : "" },
   };
 }
 
