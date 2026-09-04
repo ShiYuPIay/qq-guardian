@@ -66,14 +66,14 @@ This repository is intentionally single-maintainer, so its commands must opt in
 explicitly with `--single-maintainer`:
 
 ```console
-GH_TOKEN=<administration-read-token> pnpm run governance:verify -- --repo ShiYuPIay/napcat-plugin-qq-guardian --branch main --single-maintainer
+GH_TOKEN=<administration-read-token> pnpm run governance:verify -- --repo ShiYuPIay/qq-guardian --branch main --single-maintainer
 ```
 
 Applying policy requires repository administration write access and an explicit
 acknowledgement that the merged workflow passed on `main`:
 
 ```console
-GH_TOKEN=<administration-write-token> pnpm run governance:apply -- --repo ShiYuPIay/napcat-plugin-qq-guardian --branch main --single-maintainer --confirm-after-main-green
+GH_TOKEN=<administration-write-token> pnpm run governance:apply -- --repo ShiYuPIay/qq-guardian --branch main --single-maintainer --confirm-after-main-green
 ```
 
 The command reads current policy first, performs no write when it is already
