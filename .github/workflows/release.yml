@@ -265,7 +265,7 @@ jobs:
           node scripts/verify-release-layout.mjs --directory=release
 
       - name: Attest exact release assets
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@9d57eef8c06cd9d6b433effeeb7a6a77b3ff94ad # v3.2.0
         with:
           subject-path: |
             release/*.zip

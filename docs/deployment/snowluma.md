@@ -186,18 +186,53 @@ HTTP 和反向 WebSocket 监听默认只绑定 `127.0.0.1`。容器网络需要�
 }
 ```
 
-这个片段只说明 Guardian 需要的条目；不要用它覆盖已有的完整 OneBot 配置或其他账号条目。SnowLuma 会在它的数据目录中维护全局 config/onebot.json 和按账号覆盖的 config/onebot_<uin>.json，以实际启用账号的配置为准。
-
-把该条目的 accessToken 原样填入 deploy/.env：
+把这个条目的 `accessToken` 原样填入 `deploy/.env`：
 
 ```text
 SNOWLUMA_ACCESS_TOKEN=<同一个 token>
 SNOWLUMA_WS_URL=ws://snowluma:3001/
 ```
 
-ws://snowluma:3001/ 是 Compose 内部服务地址。不要把它改成 ws://127.0.0.1:3001/ 或 ws://localhost:3001/：在 Guardian 容器里，localhost 指向 Guardian 容器本身，而不是 SnowLuma。
+`ws://snowluma:3001/` 是 Compose 内部服务地址。不要把它改成 `ws://127.0.0.1:3001/` 或 `ws://localhost:3001/`：在 Guardian 容器里，localhost 指向 Guardian 容器本身，而不是 SnowLuma。
 
-### 仅重建 Guardian 并完成初始登录
+### 傻瓜式反向 WebSocket 配置
+
+反向 WebSocket 是 SnowLuma 主动连向 Guardian 的模式，适合不能从 Guardian 访问 SnowLuma 的网络拓扑。下面是按步骤操作的完整示例：
+
+1. 在 `deploy/.env` 中把传输模式改为反向 WebSocket：
+
+```text
+SNOWLUMA_TRANSPORT=reverse-websocket
+SNOWLUMA_REVERSE_WS_HOST=0.0.0.0
+SNOWLUMA_REVERSE_WS_PORT=6101
+SNOWLUMA_REVERSE_WS_PATH=/onebot
+```
+
+2. 在 SnowLuma WebUI 的 OneBot 配置中，不要新增 `wsServers`，而是把 Guardian 当作反向客户端接入。让 SnowLuma 连接 `http://guardian:6101/onebot` 这一条已存在的反向服务端点。这样 SnowLuma 主动发起连接，Guardian 只负责监听本地端口。
+
+3. 只重建 Guardian：
+
+```bash
+docker compose --env-file deploy/.env -f deploy/compose.yaml up -d --no-deps --force-recreate guardian
+docker compose --env-file deploy/.env -f deploy/compose.yaml logs --tail=100 guardian
+```
+
+4. 在 Guardian 日志里确认看到 `OneBot reverse-websocket provider ready`。如果没看到，按顺序检查：
+   - `SNOWLUMA_REVERSE_WS_HOST` 是否为 `0.0.0.0`
+   - `SNOWLUMA_REVERSE_WS_PORT` 是否为 `6101`
+   - `SNOWLUMA_REVERSE_WS_PATH` 是否为 `/onebot`
+   - SnowLuma 的 `wsClients` 是否指向 Guardian 服务名和端口
+   - 两端 `accessToken` 是否完全一致
+
+5. 打开浏览器访问：
+
+```text
+http://127.0.0.1:6099/plugin/napcat-plugin-qq-guardian/page/guardian
+```
+
+6. 在“群组管理”刷新群列表、开启需要保护的群，并以一次低风险测试操作确认 Guardian 能收到事件并调用 OneBot。连接正常时，Guardian 输出会显示已连接到 OneBot；token 不应出现在输出中。
+
+## 仅重建 Guardian 并完成初始登录
 
 填入 OneBot token 后，只重建 Guardian：
 
@@ -389,6 +424,62 @@ ws://snowluma:3001/ 只在本项目 Compose 网络中有效。跨项目、跨主
 
 ## Guardian 环境变量与 SDK 备用连接
 
+### SnowLuma SDK 文档速览
+- 包名：`@snowluma/sdk`
+- 类型完备的 OneBot v11 客户端，纯 ESM，自带类型声明
+- 要求 Node.js ≥ 22；官方推荐 Node 24 LTS
+- 与 SnowLuma 核心共享 action 类型，调用参数和返回值不会随版本漂移
+
+| 传输 | 客户端类 | 默认端点 |
+| --- | --- | --- |
+| HTTP（POST JSON） | `SnowLumaHttpClient` | `http://127.0.0.1:3000/` |
+| WebSocket（正向 / 反向，含事件） | `SnowLumaWebSocketClient` | `ws://127.0.0.1:3001/` |
+
+两个客户端都继承自抽象基类 `SnowLumaApiClient`，因此 `call()` / `request()` 以及所有 camelCase action 快捷方法在两种传输上一致。HTTP 适合纯请求-响应的脚本；WebSocket 在此之上还能实时接收事件。
+
+#### HTTP 客户端
+```ts
+import { SnowLumaHttpClient } from '@snowluma/sdk';
+
+const bot = new SnowLumaHttpClient({
+  baseUrl: 'http://127.0.0.1:3000/', // 默认值
+  accessToken: process.env.SNOWLUMA_TOKEN,
+  requestTimeoutMs: 30_000,            // 默认 30s
+});
+```
+
+`SnowLumaHttpClientOptions`：
+- `baseUrl?` —— OneBot HTTP 端点，默认 `http://127.0.0.1:3000/`
+- `accessToken?` —— OneBot 配置里的 token；存在时自动加 `Authorization: Bearer <token>`
+- `requestTimeoutMs?` —— 默认超时（毫秒），默认 `30000`
+- `fetch?` —— 自定义 `fetch` 实现（测试或非标准运行时用）
+- `headers?` —— 每次请求附带的额外请求头
+
+#### WebSocket 客户端
+```ts
+import { SnowLumaWebSocketClient } from '@snowluma/sdk';
+
+const bot = new SnowLumaWebSocketClient({
+  url: 'ws://127.0.0.1:3001/', // 默认值
+  accessToken: process.env.SNOWLUMA_TOKEN,
+  reconnect: true,              // 开启自动重连
+});
+```
+
+`SnowLumaWebSocketClientOptions`：
+- `url?` —— OneBot WebSocket 端点，默认 `ws://127.0.0.1:3001/`
+- `accessToken?` —— 通过查询参数附加到连接 URL
+- `requestTimeoutMs?` —— 默认请求超时，默认 `30000`
+- `role?` —— 客户端声明的角色：`'Api'` | `'Event'` | `'Universal'`（默认 `'Universal'`）
+- `reconnect?` —— `true` 或一个 `ReconnectOptions`（`retries` / `minDelayMs` / `maxDelayMs`），开启意外断开后的自动重连
+- `protocols?` / `webSocket?` —— 可选子协议、可选自定义 `WebSocket` 构造器（Node 运行时或测试用）
+
+> **Node 自定义 WebSocket**：浏览器和 Node 24 都自带全局 `WebSocket`，可直接用。若想用 `ws` 包等实现，把它传给 `webSocket` 选项即可。
+
+项目中的 native transport 与 SDK fallback 采用相同的有界重连策略，且不会因 WebSocket 超时而自动重放有副作用的操作。若需排查备用路径，可在 Guardian 的实际启动环境中设置 `SNOWLUMA_SDK_FALLBACK=off` 并重启；正常部署不需要手动设置该变量。
+
+文档主页：https://snowluma.github.io/sdk/index.html
+
 | 变量 | 说明 |
 | --- | --- |
 | SNOWLUMA_WS_URL | 从 Guardian 所在网络命名空间访问 SnowLuma 正向 WebSocket 的地址。原生同机通常是 ws://127.0.0.1:3001/；本项目 Compose 通常是 ws://snowluma:3001/。 |
@@ -408,21 +499,21 @@ ws://snowluma:3001/ 只在本项目 Compose 网络中有效。跨项目、跨主
 | QQ_GUARDIAN_BOOTSTRAP_USERNAME / QQ_GUARDIAN_BOOTSTRAP_PASSWORD | 可选的无人值守首次管理员凭据；仅用户表为空时用于初始化。恢复模式必须同时显式提供两项。只应存放在受保护的环境文件或 Secret 中。 |
 | QQ_GUARDIAN_FORCE_BOOTSTRAP_RECOVERY | 高风险、一次性恢复开关；仅 `1` 启用，并要求两项显式凭据均有效，否则启动会在任何恢复副作用前失败。恢复成功后必须移除。完整步骤见[超级管理员保护与受控恢复](../security/super-admin-recovery.md)。 |
 
-Guardian 默认先使用自己的原生 SnowLuma WebSocket 传输。只有该传输在**启动阶段**的有限连接尝试全部失败时，才会在 SNOWLUMA_SDK_FALLBACK=auto 下改用打包的官方 @snowluma/sdk WebSocket 客户端。
+Guardian 默认先使用自己的原生 SnowLuma WebSocket 传输。只有该传输在**启动阶段**的有限连接尝试全部失败时，才会在 `SNOWLUMA_SDK_FALLBACK=auto` 下改用打包的官方 `@snowluma/sdk` WebSocket 客户端。
 
 - 原生传输一旦连通，SDK 不会被创建或连接。
 - SDK 接管前原生传输会关闭；两个传输不会并行消费事件。
 - 选定一种传输后，本进程不会在运行中来回切换。
 - Guardian 不会因 WebSocket 超时而改用 HTTP 自动重放踢人、禁言、审批等动作，避免重复执行有副作用的操作。
-- 需要排查备用路径时，可在 Guardian 的实际启动环境中设置 SNOWLUMA_SDK_FALLBACK=off 并重启。正常部署不需要手动设置该变量。
+- 需要排查备用路径时，可在 Guardian 的实际启动环境中设置 `SNOWLUMA_SDK_FALLBACK=off` 并重启。正常部署不需要手动设置该变量。
 
 SDK 备用不解决错误 token、错误网络地址、SnowLuma 未启用 wsServers 或 QQ/hook 未就绪的问题。先修正 OneBot 配置和网络，再判断是否需要备用传输。
 
 ### WebSocket 入站资源边界
 
-原生传输在复制或解析数据前读取 string、ArrayBuffer、TypedArray/DataView 与 Blob 的字节长度。单帧超过 SNOWLUMA_MAX_FRAME_BYTES 时不会进入解析队列，Guardian 会清空该连接的原始帧、事件和待处理请求状态，并以 WebSocket 关闭码 1009 断开。队列达到帧数或总字节上限时丢弃最新帧；正在解码的帧同时计入两个上限，因此慢 Blob 解码不会绕过边界。断线和重连会使旧连接的排队帧失效。
+原生传输在复制或解析数据前读取 string、ArrayBuffer、TypedArray/DataView 与 Blob 的字节长度。单帧超过 `SNOWLUMA_MAX_FRAME_BYTES` 时不会进入解析队列，Guardian 会清空该连接的原始帧、事件和待处理请求状态，并以 WebSocket 关闭码 1009 断开。队列达到帧数或总字节上限时丢弃最新帧；正在解码的帧同时计入两个上限，因此慢 Blob 解码不会绕过边界。断线和重连会使旧连接的排队帧失效。
 
-malformed_json、invalid_packet、unknown_packet、unsupported_frame_type、frame_too_large 和 raw_ingress_saturated 会作为限频的传输诊断输出。诊断只包含类别、出现次数和字节计数，不包含原始载荷、token 或 URL 凭据。若修改默认值，应同时监控 1009 断线和 raw_ingress_saturated；先确认上游事件大小与消费延迟，再逐步调高，不能用无上限值绕过保护。无效或超出表中范围的环境变量会回退到默认值。
+`malformed_json`、`invalid_packet`、`unknown_packet`、`unsupported_frame_type`、`frame_too_large` 和 `raw_ingress_saturated` 会作为限频的传输诊断输出。诊断只包含类别、出现次数和字节计数，不包含原始载荷、token 或 URL 凭据。若修改默认值，应同时监控 1009 断线和 `raw_ingress_saturated`；先确认上游事件大小与消费延迟，再逐步调高，不能用无上限值绕过保护。无效或超出表中范围的环境变量会回退到默认值。
 
 官方 SDK 备用路径订阅 SDK 提供的 raw/open/close/error 钩子，并在 Guardian 的事件队列前再次执行单帧上限。SDK 的 raw 钩子在 SDK 已收到当前帧后触发，因此 Guardian 能阻止该帧进入自己的事件队列并关闭连接，但不能撤销 SDK 对当前帧已经发生的一次接收或解析分配；原生传输提供完整的解析前队列帧数与字节边界。两条路径都会在连接关闭时清空 Guardian 的事件队列；启用重连时，SDK 因超限而关闭后由 Guardian 使用同一有界退避策略重新连接。
 
