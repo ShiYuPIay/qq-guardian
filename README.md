@@ -38,7 +38,7 @@ logic; choose the provider that matches the host you already operate.
 
 ### 安装
 
-1. 从 [Releases](https://github.com/ShiYuPIay/napcat-plugin-qq-guardian/releases/latest) 下载 `napcat-plugin-qq-guardian.zip`。
+1. 从 [Releases](https://github.com/ShiYuPIay/qq-guardian/releases/latest) 下载 `napcat-plugin-qq-guardian.zip`。
 2. 在 NapCat 插件目录创建 `napcat-plugin-qq-guardian` 文件夹，并把 ZIP 内容解压到该文件夹。
 3. 在 NapCat 的插件管理界面启用 QQ Guardian，然后按 NapCat 的方式重载或重启。
 
@@ -101,7 +101,7 @@ SnowLuma 部署使用单独的发布包 `qq-guardian-snowluma.zip`。推荐从�
 
 - 不要将 SnowLuma WebUI、noVNC/VNC、OneBot HTTP/WS 或 Guardian WebUI 直接暴露到公网；远程访问应使用受保护的 VPN、SSH 隧道或已鉴权的反向代理。
 - 不要把 OneBot token、Guardian 管理员密码、`.env`、`config.json`、SQLite 数据库或迁移备份提交到仓库或发送到不可信位置。
-- 用户管理会阻止删除或降级最后一名未锁定且已设置密码的超级管理员；管理员全部不可用时，使用[受控超级管理员恢复流程](docs/security/super-admin-recovery.md)，不要直接修改 SQLite。
+- 用户管理会阻止删除或降级最后一名未锁定且已设置密码的超级管理员；管理员全部不可用时，使用[受控恢复流程](docs/security/super-admin-recovery.md)，不要直接修改 SQLite。
 - 人工审核默认不会信任申请人填写的“朋友推荐”等通用话术。内置通过关键词是高风险显式选项；优先使用每群自定义的可信准入规则。
 - 远端情报默认仅观察。只有超级管理员为每个 Feed 固定精确 SHA-256 并显式切换到 `enforce` 后，远端数据才可触发审核或处罚；详见 [远端情报信任策略](docs/security/intel-feeds.md)。
 - WebUI 只把符合 SemVer 的发布标签和受限的 GitHub HTTPS 地址视为可安装版本；发布说明按纯文本处理，自动下载还必须同时提供可校验的 `.sha256` 文件。
